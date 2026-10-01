@@ -1,11 +1,14 @@
 'use client';
 
+import { Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
+
+export const dynamic = 'force-dynamic';
 import { Box, Typography, Sheet, Button, Alert } from '@mui/joy';
 import Link from 'next/link';
 import { Warning } from '@mui/icons-material';
 
-export default function ErrorPage() {
+function ErrorContent() {
   const searchParams = useSearchParams();
   const error = searchParams.get('error');
 
@@ -62,5 +65,17 @@ export default function ErrorPage() {
         </Link>
       </Sheet>
     </Box>
+  );
+}
+
+export default function ErrorPage() {
+  return (
+    <Suspense fallback={
+      <Box sx={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <Typography>Loading...</Typography>
+      </Box>
+    }>
+      <ErrorContent />
+    </Suspense>
   );
 }

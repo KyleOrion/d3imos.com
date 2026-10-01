@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, Suspense } from 'react';
 import { signIn } from 'next-auth/react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
@@ -17,7 +17,7 @@ import {
 import Link from 'next/link';
 import { LockRounded, PersonRounded, Shield, Google } from '@mui/icons-material';
 
-export default function SignInPage() {
+function SignInForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [username, setUsername] = useState('');
@@ -180,5 +180,17 @@ export default function SignInPage() {
         </form>
       </Sheet>
     </Box>
+  );
+}
+
+export default function SignInPage() {
+  return (
+    <Suspense fallback={
+      <Box sx={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <Typography>Loading...</Typography>
+      </Box>
+    }>
+      <SignInForm />
+    </Suspense>
   );
 }
