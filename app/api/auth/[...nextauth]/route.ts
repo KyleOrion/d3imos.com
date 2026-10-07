@@ -3,6 +3,7 @@ import CredentialsProvider from 'next-auth/providers/credentials';
 import GoogleProvider from 'next-auth/providers/google';
 import { findUserByUsername, verifyPassword, getUsersCollection, findUserByEmail } from '@/lib/user';
 import { ObjectId } from 'mongodb';
+import { encrypt, encryptOptional, decrypt } from '@/lib/crypto';
 
 export const authOptions: NextAuthOptions = {
   providers: [
@@ -50,9 +51,11 @@ export const authOptions: NextAuthOptions = {
           }
 
           // Verify MFA code
+          // Feelix Brothers Security: Decrypt MFA secret before verifying
           const { TOTP } = await import('otpauth');
+          const decryptedSecret = decrypt(user.mfaSecret!);
           const totp = new TOTP({
-            secret: user.mfaSecret!,
+            secret: decryptedSecret,
           });
 
           const isValidMFA = totp.validate({
@@ -92,12 +95,13 @@ export const authOptions: NextAuthOptions = {
 
         if (!dbUser) {
           // Create new user from Google OAuth
+          // Feelix Brothers Security: Encrypt OAuth tokens before storing
           const result = await users.insertOne({
             username: token.email!.split('@')[0],
             email: token.email!,
             googleId: account.providerAccountId,
-            googleAccessToken: account.access_token,
-            googleRefreshToken: account.refresh_token,
+            googleAccessToken: encryptOptional(account.access_token),
+            googleRefreshToken: encryptOptional(account.refresh_token),
             googleTokenExpiry: account.expires_at,
             mfaEnabled: false,
             createdAt: new Date(),
@@ -106,13 +110,14 @@ export const authOptions: NextAuthOptions = {
           token.id = result.insertedId.toString();
         } else {
           // Update existing user with Google tokens
+          // Feelix Brothers Security: Encrypt OAuth tokens before storing
           await users.updateOne(
             { _id: dbUser._id },
             {
               $set: {
                 googleId: account.providerAccountId,
-                googleAccessToken: account.access_token,
-                googleRefreshToken: account.refresh_token,
+                googleAccessToken: encryptOptional(account.access_token),
+                googleRefreshToken: encryptOptional(account.refresh_token),
                 googleTokenExpiry: account.expires_at,
                 updatedAt: new Date(),
               },

@@ -5,6 +5,7 @@ import { TOTP, Secret } from 'otpauth';
 import QRCode from 'qrcode';
 import { ObjectId } from 'mongodb';
 import { getUsersCollection } from '@/lib/user';
+import { encrypt } from '@/lib/crypto';
 
 export async function POST(request: NextRequest) {
   try {
@@ -36,13 +37,13 @@ export async function POST(request: NextRequest) {
     const qrCodeDataURL = await QRCode.toDataURL(otpauthURL);
 
     // Store the secret temporarily (will be verified before enabling)
-    // In production, you might want to use a temporary storage like Redis
+    // Feelix Brothers Security: Encrypt MFA secret before storing
     const users = await getUsersCollection();
     await users.updateOne(
       { _id: new ObjectId(session.user.id) },
       {
         $set: {
-          tempMfaSecret: secret.base32,
+          tempMfaSecret: encrypt(secret.base32),
           updatedAt: new Date(),
         }
       }

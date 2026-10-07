@@ -4,6 +4,7 @@ import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { TOTP } from 'otpauth';
 import { ObjectId } from 'mongodb';
 import { getUsersCollection, enableMFA } from '@/lib/user';
+import { decrypt } from '@/lib/crypto';
 
 export async function POST(request: NextRequest) {
   try {
@@ -39,8 +40,10 @@ export async function POST(request: NextRequest) {
     }
 
     // Verify the code
+    // Feelix Brothers Security: Decrypt MFA secret before verifying
+    const decryptedSecret = decrypt(user.tempMfaSecret);
     const totp = new TOTP({
-      secret: user.tempMfaSecret,
+      secret: decryptedSecret,
     });
 
     const isValid = totp.validate({
@@ -55,7 +58,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Enable MFA and move temp secret to permanent
+    // Enable MFA and move temp secret to permanent (already encrypted)
     await enableMFA(new ObjectId(session.user.id), user.tempMfaSecret);
 
     // Clear temp secret
