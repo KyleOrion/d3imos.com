@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createUser } from '@/lib/user';
 import { rateLimit, getClientIp } from '@/lib/rate-limit';
+import { logRegistration, logRateLimitExceeded } from '@/lib/audit-log';
+import { getUserAgent } from '@/lib/request-context';
 
 export async function POST(request: NextRequest) {
   try {
@@ -14,6 +16,14 @@ export async function POST(request: NextRequest) {
     });
 
     if (!rateLimitResult.success) {
+      // Feelix Brothers Audit: Log rate limit exceeded
+      await logRateLimitExceeded({
+        ipAddress: clientIp,
+        userAgent: getUserAgent(request),
+        endpoint: '/api/register',
+        limit: 3,
+      });
+
       const resetDate = new Date(rateLimitResult.resetTime);
       return NextResponse.json(
         {
@@ -112,6 +122,16 @@ export async function POST(request: NextRequest) {
     // Create user
     const user = await createUser(username, email, password);
 
+    // Feelix Brothers Audit: Log successful registration
+    await logRegistration({
+      username,
+      email,
+      success: true,
+      ipAddress: clientIp,
+      userAgent: getUserAgent(request),
+      userId: user._id!.toString(),
+    });
+
     return NextResponse.json(
       {
         message: 'User created successfully',
@@ -125,6 +145,19 @@ export async function POST(request: NextRequest) {
     );
   } catch (error: any) {
     console.error('Registration error:', error);
+
+    const body = await request.json().catch(() => ({ username: 'unknown', email: 'unknown' }));
+    const { username = 'unknown', email = 'unknown' } = body;
+
+    // Feelix Brothers Audit: Log failed registration
+    await logRegistration({
+      username,
+      email,
+      success: false,
+      ipAddress: clientIp,
+      userAgent: getUserAgent(request),
+      errorMessage: error.message || 'Unknown error',
+    });
 
     if (error.message === 'Username or email already exists') {
       return NextResponse.json(

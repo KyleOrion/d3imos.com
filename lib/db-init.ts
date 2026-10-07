@@ -1,4 +1,5 @@
 import { getUsersCollection } from './user';
+import { initializeAuditLogIndexes } from './audit-log';
 
 /**
  * Feelix Brothers Database Initialization
@@ -83,6 +84,9 @@ export async function initializeDatabase() {
     ]);
 
     console.log('✅ Database indexes initialized successfully');
+
+    // Initialize audit log indexes
+    await initializeAuditLogIndexes();
   } catch (error) {
     // Don't crash the app if indexes fail, but log the error
     console.error('⚠️  Database index initialization failed:', error);
