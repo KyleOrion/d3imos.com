@@ -1,8 +1,37 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createUser } from '@/lib/user';
+import { rateLimit, getClientIp } from '@/lib/rate-limit';
 
 export async function POST(request: NextRequest) {
   try {
+    // Rate limiting - Feelix Brothers Protection
+    // Educational: Allow 3 registration attempts per IP per hour
+    // Prevents mass account creation and DoS attacks
+    const clientIp = getClientIp(request);
+    const rateLimitResult = rateLimit(clientIp, {
+      maxRequests: 3,
+      windowSeconds: 3600, // 1 hour
+    });
+
+    if (!rateLimitResult.success) {
+      const resetDate = new Date(rateLimitResult.resetTime);
+      return NextResponse.json(
+        {
+          error: 'Too many registration attempts. Please try again later.',
+          resetTime: resetDate.toISOString(),
+        },
+        {
+          status: 429, // 429 Too Many Requests
+          headers: {
+            'Retry-After': Math.ceil((rateLimitResult.resetTime - Date.now()) / 1000).toString(),
+            'X-RateLimit-Limit': '3',
+            'X-RateLimit-Remaining': '0',
+            'X-RateLimit-Reset': rateLimitResult.resetTime.toString(),
+          },
+        }
+      );
+    }
+
     const body = await request.json();
     const { username, email, password, confirmPassword } = body;
 
@@ -21,9 +50,43 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Password strength validation - Feelix Brothers Protection
+    // Educational: Strong passwords prevent brute force attacks
     if (password.length < 8) {
       return NextResponse.json(
         { error: 'Password must be at least 8 characters' },
+        { status: 400 }
+      );
+    }
+
+    // Check for uppercase letter
+    if (!/[A-Z]/.test(password)) {
+      return NextResponse.json(
+        { error: 'Password must contain at least one uppercase letter' },
+        { status: 400 }
+      );
+    }
+
+    // Check for lowercase letter
+    if (!/[a-z]/.test(password)) {
+      return NextResponse.json(
+        { error: 'Password must contain at least one lowercase letter' },
+        { status: 400 }
+      );
+    }
+
+    // Check for number
+    if (!/[0-9]/.test(password)) {
+      return NextResponse.json(
+        { error: 'Password must contain at least one number' },
+        { status: 400 }
+      );
+    }
+
+    // Check for special character
+    if (!/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password)) {
+      return NextResponse.json(
+        { error: 'Password must contain at least one special character (!@#$%^&*...)' },
         { status: 400 }
       );
     }

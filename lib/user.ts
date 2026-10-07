@@ -19,7 +19,7 @@ export interface User {
   updatedAt: Date;
 }
 
-const DATABASE_NAME = 'kylebethke_auth';
+const DATABASE_NAME = 'd3imos_auth';
 const USERS_COLLECTION = 'users';
 
 export async function getUsersCollection() {

@@ -145,7 +145,9 @@ export const authOptions: NextAuthOptions = {
   },
   session: {
     strategy: 'jwt',
-    maxAge: 30 * 24 * 60 * 60, // 30 days
+    maxAge: 7 * 24 * 60 * 60, // 7 days - Feelix Brothers Security
+    // Educational: Shorter session = less time for attacker if JWT is stolen
+    // Users will need to re-login weekly, but security is improved
   },
   secret: process.env.NEXTAUTH_SECRET,
 };
