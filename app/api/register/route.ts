@@ -5,11 +5,14 @@ import { logRegistration, logRateLimitExceeded } from '@/lib/audit-log';
 import { getUserAgent } from '@/lib/request-context';
 
 export async function POST(request: NextRequest) {
+  // Extract request context once for use throughout
+  const clientIp = getClientIp(request);
+  const userAgent = getUserAgent(request);
+
   try {
     // Rate limiting - Feelix Brothers Protection
     // Educational: Allow 3 registration attempts per IP per hour
     // Prevents mass account creation and DoS attacks
-    const clientIp = getClientIp(request);
     const rateLimitResult = rateLimit(clientIp, {
       maxRequests: 3,
       windowSeconds: 3600, // 1 hour
@@ -19,7 +22,7 @@ export async function POST(request: NextRequest) {
       // Feelix Brothers Audit: Log rate limit exceeded
       await logRateLimitExceeded({
         ipAddress: clientIp,
-        userAgent: getUserAgent(request),
+        userAgent,
         endpoint: '/api/register',
         limit: 3,
       });
@@ -128,7 +131,7 @@ export async function POST(request: NextRequest) {
       email,
       success: true,
       ipAddress: clientIp,
-      userAgent: getUserAgent(request),
+      userAgent,
       userId: user._id!.toString(),
     });
 
@@ -155,7 +158,7 @@ export async function POST(request: NextRequest) {
       email,
       success: false,
       ipAddress: clientIp,
-      userAgent: getUserAgent(request),
+      userAgent,
       errorMessage: error.message || 'Unknown error',
     });
 
